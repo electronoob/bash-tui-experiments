@@ -6,6 +6,7 @@ IRC_NICK="bashirc"
 IRC_PORT="6667"
 
 main() {
+  redraw
   connect
   loop
 }
@@ -22,10 +23,11 @@ function connect {
 function irc {
   case "$1" in
     'PING') 
-      echo "PONG? PONG!"
+      #echo "PONG? PONG!"
       echo "PONG $2" >&3
       ;;
-    *) echo "$*"
+    *) 
+      #echo "$*"
       ;;
   esac  
   #check for raw 001 connected
@@ -34,6 +36,9 @@ function irc {
       echo "001 received"
       echo "JOIN :${IRC_CHANNEL}" >&3
       ;;
+    'PRIVMSG')
+      echo $*
+      ;;    
     *)
       :
       ;;
@@ -66,11 +71,45 @@ function enter {
 }
 function redraw {
   :
-  #echo $CMD_BUFFER
+  #hide cursor
+  echo -e "\e[?25l"
+  #home cursor
+  echo -e "\e[H"
+  #display prompt and erase remining characters on line
+  echo -e "$(k 245 234) ${IRC_NICK} $(k 234 248)${segment} ${IRC_SERVER} ${section} ${IRC_CHANNEL} $(k 248 0)${segment} $(end)\e[K ${CMD_BUFFER}"
 }
 function loop {
   io
   redraw
   loop
 }
+segment=""
+section=""
+# set foreground to the 'default'
+function df() {
+  echo "\e[39m"
+}
+# set background to the 'default'
+function db() {
+  echo "\e[49m"
+}
+function fg() {
+  echo "\e[38;5;${1}m"
+}
+function bg() {
+  echo "\e[48;5;${1}m"
+}
+function end(){
+  echo "\e[0m"
+}
+function b() {
+  echo "\e[1m"
+}
+function k() {
+  echo $(fg $1)$(bg $2)
+}
+
+
 main "$@"; exit
+
+

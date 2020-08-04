@@ -1,0 +1,127 @@
+
+                                  Jared Sanson
+
+Table of Contents
+
+    1. Files
+    2. Bitmap Fonts
+    3. C Header
+    4. Drawing Fonts
+    5. Downloads
+    
+Files
+
+     • ./fonts.zip 245 KiB
+
+   After my blog post on e-ink displays, I wanted to go into more detail on
+   how I generated the bitmap fonts I used. In this blog post, I'll show how
+   to generate bitmap fonts from fonts you can get online, and a brief intro
+   on how to use them.
+
+   I know there are a few tools out there for generating this kind of thing,
+   but this was a custom thing for my microcontroller and I like doing and
+   learning things myself!
+
+Bitmap Fonts
+
+   There are quite a few sites with freely downloadable fonts that make great
+   pixel fonts (FontGal.com is one), although .ttf files can't really be used
+   on microcontrollers, so we first need to rasterize them to a bitmap font.
+   To conserve space, each character is 6x8 pixels in size (WxH), and only
+   common ASCII characters are drawn.
+
+C Header
+
+   Before we can use this in a microcontroller, we need to turn the bitmap
+   font into a C header file, so it can be compiled into the firmware. Since
+   the bitmap font is black and white, the most efficient way to store it is
+   an array of 6 bytes, with each byte representing one vertical column of
+   pixels (8 pixels high). The resulting header file looks something like
+   this:
+
+ const unsigned char font[96][6] = {
+     {0x00,0x00,0x00,0x00,0x00,0x00}, //
+     {0x2f,0x00,0x00,0x00,0x00,0x00}, // !
+     {0x03,0x00,0x03,0x00,0x00,0x00}, // "
+         ...
+
+   This is a fairly standard way of representing fonts, though it does pose a
+   limitation in that characters can only be 8 pixels high, and it makes it
+   somewhat difficult to represent variable-width characters (since each char
+   must have exactly 6 bytes)
+
+   For example, the character 'A':
+
+ {0x3C,0x12,0x12,0x12,0x3E,0x00}, // A
+
+Drawing Fonts
+
+   It's fairly easy to draw fonts stored like this. First we convert the
+   ASCII character to an index by subtracting the offset of the first
+   character in the font. This works because the characters in the font are
+   defined in numerical order ('0'=48, 'A'=65, etc.), so subtracting the
+   space character (' '=32) returns the index in the array. We also replace
+   any invalid characters with space, to prevent the code from trying to draw
+   characters that aren't defined!
+
+ #include "font.h"
+
+ #define CHAR_WIDTH 6
+ #define CHAR_HEIGHT 8
+
+
+ void DrawChar(char c, uint8 x, uint8 y, uint8 brightness) {
+     uint8 i,j;
+
+     // Convert the character to an index
+     c = c & 0x7F;
+     if (c < ' ') {
+         c = 0;
+     } else {
+         c -= ' ';
+     }
+
+     // 'font' is a multidimensional array of [96][char_width]
+     // which is really just a 1D array of size 96*char_width.
+     const uint8* chr = font[c*CHAR_WIDTH];
+
+     // Draw pixels
+     for (j=0; j<CHAR_WIDTH; j++) {
+         for (i=0; i<CHAR_HEIGHT; i++) {
+
+             if (chr[j] & (1<<i)) {
+                 DrawPixel(x+j, y+i, brightness);
+             }
+         }
+     }
+ }
+
+   This can easily be used to draw a C-string:
+
+ void DrawString(const char* str, uint8 x, uint8 y, uint8 brightness) {
+     while (*str) {
+         DrawChar(*str++, x, y, brightness);
+         x += CHAR_WIDTH
+     }
+ }
+
+   It is possible to extend this code to support variable-width characters,
+   or dynamically selectable fonts (using pointers), but that's a bit
+   trickier to implement.
+
+Downloads
+
+   An archive of my processed fonts is available here: ./fonts.zip
+
+   This includes the processing script, rasterized .png files, and the source
+   .ttf files.
+
+   As always, if you want to know more or need some help, feel free to
+   contact me or leave a comment!
+
+   ══════════════════════════════════════════════════════════════════════════
+
+   © Jared Sanson 2020
+   Last updated: 2019-11-04
+
+https://jared.geek.nz/2014/jan/custom-fonts-for-microcontrollers
